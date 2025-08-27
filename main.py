@@ -2,17 +2,21 @@ import asyncio
 import json
 import os
 import ssl
-import websockets
+import aiohttp  # Import aiohttp
 import logging
 from typing import Optional
 from dotenv import load_dotenv
-from websockets.legacy.client import WebSocketClientProtocol
+# Note: You can remove `from websockets.legacy.client import WebSocketClientProtocol`
+# as you'll no longer be using the websockets library.
 
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
+# Add this for more verbose debugging
+logging.getLogger('aiohttp.client').setLevel(logging.DEBUG)
+
 
 # Load environment variables from .env file
 load_dotenv()
@@ -54,11 +58,20 @@ def format_session_id(ssid_message: str) -> Optional[str]:
         logging.error(f"Failed to format session ID: {e}")
         return None
 
-async def connect_to_pocket_option():
+async def receive_and_print_messages(websocket, count: int):
     """
-    Connects to the Pocket Option WebSocket server and authenticates.
+    Helper function to receive and print a specific number of messages using aiohttp.
     """
-    logging.info("Attempting to connect to Pocket Option WebSocket.")
+    for _ in range(count):
+        message = await websocket.receive()
+        if message.type == aiohttp.WSMsgType.TEXT:
+            logging.info(f"Initial server message: {message.data}")
+
+async def connect_to_pocket_option_aiohttp():
+    """
+    Connects to the Pocket Option WebSocket server and authenticates using aiohttp.
+    """
+    logging.info("Attempting to connect to Pocket Option WebSocket with aiohttp.")
     
     ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
     ssl_context.check_hostname = False
@@ -69,41 +82,39 @@ async def connect_to_pocket_option():
         return
 
     try:
-        async with websockets.connect(
-            WEBSOCKET_URL,
-            ssl=ssl_context,
-            # Changed from 'extra_headers' to 'additional_headers' for websockets v11.0+
-            extra_headers=DEFAULT_HEADERS, 
-            ping_interval=30,
-            ping_timeout=30,
-            close_timeout=10,
-        ) as websocket:
-            logging.info("Connected to Pocket Option WebSocket.")
-            
-            # Handshake Phase
-            await receive_and_print_messages(websocket, 2)
-            
-            # Authentication Phase
-            logging.info("Sending authentication message...")
-            await websocket.send(formatted_ssid)
-            logging.info("Authentication message sent.")
-            
-            while True:
-                response = await websocket.recv()
-                logging.info(f"Received message: {response}")
+        async with aiohttp.ClientSession() as session:
+            async with session.ws_connect(
+                WEBSOCKET_URL,
+                ssl=ssl_context,
+                headers=DEFAULT_HEADERS, 
+                timeout=10, 
+                autoping=True,
+                autoclose=True,
+                heartbeat=30,
+            ) as websocket:
+                logging.info("Connected to Pocket Option WebSocket.")
+                
+                # Handshake Phase
+                await receive_and_print_messages(websocket, 2)
 
-    except websockets.exceptions.ConnectionClosed as e:
-        logging.error(f"Connection closed unexpectedly: {e}")
-    except Exception as e:
-        logging.critical(f"An unexpected fatal error occurred: {e}")
+                # Authentication Phase
+                logging.info("Sending authentication message...")
+                await websocket.send_str(formatted_ssid)
+                logging.info("Authentication message sent.")
+                
+                async for msg in websocket:
+                    if msg.type == aiohttp.WSMsgType.TEXT:
+                        logging.info(f"Received message: {msg.data}")
+                    elif msg.type == aiohttp.WSMsgType.ERROR:
+                        logging.error(f"WebSocket Error: {websocket.exception()}")
+                        break
 
-async def receive_and_print_messages(websocket: WebSocketClientProtocol, count: int):
-    """
-    Helper function to receive and print a specific number of messages.
-    """
-    for _ in range(count):
-        message = await websocket.recv()
-        logging.info(f"Initial server message: {message}")
+    except aiohttp.ClientConnectorError as e:
+        logging.critical(f"Connection failed: {e}")
+    except asyncio.TimeoutError:
+        logging.critical("Connection attempt timed out.")
+    except Exception:
+        logging.exception("An unexpected fatal error occurred:")
 
 if __name__ == "__main__":
-    asyncio.run(connect_to_pocket_option())
+    asyncio.run(connect_to_pocket_option_aiohttp())
