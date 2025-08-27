@@ -1,18 +1,4 @@
-# Python-specific files
-*.pyc
-__pycache__/
-
-# Dependencies
-# This ignores the folder created by package managers like pip.
-# You can generate this environment with 'pip install -r requirements.txt'
-.venv/
-
-# Environment variables
-# This is the most critical line. It prevents your .env file from being committed.
 .env
-
-# IDE and OS-specific files
-# These are files created by your operating system or IDE that are unique to your setup.
-.DS_Store
-.vscode/
-.idea/
+__pycache__/
+*.pyc
+.venv/
