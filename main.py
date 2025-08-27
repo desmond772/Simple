@@ -1,66 +1,70 @@
 import asyncio
-import json
-import websockets
 import os
 import logging
+import socketio
 from dotenv import load_dotenv
 
-# Configure logging to display INFO messages and above.
+# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
-# Load environment variables from the .env file for local testing.
+# Load environment variables
 load_dotenv()
 
-# Get the SSID from the environment variable.
+# Get the Pocket Option SSID from the environment variable.
 SSID_MESSAGE = os.environ.get('POCKET_OPTION_SSID')
-
 if not SSID_MESSAGE:
     logging.critical("POCKET_OPTION_SSID environment variable not set. Exiting.")
     exit(1)
 
-# CORRECTED: Use the known, working WebSocket URL.
-# The previous URL was causing the "Name or service not known" error.
-WEBSOCKET_URL = "wss://api-in.pocketoption.com:8095/socket.io/?EIO=3&transport=websocket"
+# The Socket.IO URL is different and does not contain the EIO or transport parameters.
+# The `python-socketio` library handles this automatically.
+# Use the correct base URL for Pocket Option's Socket.IO server.
+SOCKETIO_URL = "wss://api-in.pocketoption.com:8095"
 
-async def connect_to_pocket_option():
-    """
-    Connects to the Pocket Option WebSocket server and authenticates.
-    """
-    logging.info("Attempting to connect to Pocket Option WebSocket.")
+# Create an async Socket.IO client instance
+sio = socketio.AsyncClient()
+
+@sio.event
+async def connect():
+    """Event handler for successful connection."""
+    logging.info("Connected to Pocket Option WebSocket server via Socket.IO.")
+    logging.info("Sending authentication message...")
+    # The Socket.IO library handles the EIO and transport details,
+    # so you only need to send the final message.
+    # Note: Your original SSID format might be incorrect for the Socket.IO client.
+    # The payload likely needs to be a standard JSON string or object.
+    # You may need to adapt this part based on Pocket Option's API documentation.
+    # This example assumes the payload is a valid JSON string.
     try:
-        async with websockets.connect(WEBSOCKET_URL) as websocket:
-            logging.info("Connected to Pocket Option WebSocket.")
+        await sio.send(SSID_MESSAGE)
+        logging.info("Authentication message sent.")
+    except Exception as e:
+        logging.error(f"Failed to send authentication message: {e}")
 
-            # Wait for initial server messages to establish the Socket.IO session.
-            await receive_and_print_messages(websocket, 2)
+@sio.event
+async def disconnect():
+    """Event handler for disconnection."""
+    logging.info("Disconnected from Pocket Option WebSocket server.")
 
-            # Authenticate with the server using your SSID message.
-            logging.info("Sending authentication message...")
-            await websocket.send(SSID_MESSAGE)
-            logging.info("Authentication message sent.")
+@sio.event
+async def message(data):
+    """Event handler for received messages."""
+    logging.info(f"Received message: {data}")
+    # Add your custom logic here
 
-            # Listen for subsequent server messages.
-            while True:
-                response = await websocket.recv()
-                logging.info(f"Received message: {response}")
-                # Add your custom logic here for trading, balance updates, etc.
-
-    except websockets.exceptions.ConnectionClosed as e:
-        logging.error(f"Connection closed unexpectedly: {e}")
+async def main():
+    """Main function to connect and run the client."""
+    try:
+        await sio.connect(SOCKETIO_URL)
+        await sio.wait()
+    except socketio.exceptions.ConnectionError as e:
+        logging.critical(f"Connection failed: {e}")
     except Exception as e:
         logging.critical(f"An unexpected fatal error occurred: {e}")
 
-async def receive_and_print_messages(websocket, count):
-    """
-    Helper function to receive and print a specific number of messages.
-    """
-    for _ in range(count):
-        message = await websocket.recv()
-        logging.info(f"Initial server message: {message}")
-
 if __name__ == "__main__":
-    asyncio.run(connect_to_pocket_option())
+    asyncio.run(main())
     
