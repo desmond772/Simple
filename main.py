@@ -2,19 +2,18 @@ import asyncio
 import json
 import os
 import ssl
-import aiohttp  # Import aiohttp
+import aiohttp
 import logging
 from typing import Optional
 from dotenv import load_dotenv
-# Note: You can remove `from websockets.legacy.client import WebSocketClientProtocol`
-# as you'll no longer be using the websockets library.
 
-# Configure logging
+# --- Configure Logging ---
+# Set the root logger to DEBUG to catch everything
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
-# Add this for more verbose debugging
+# Add aiohttp client logger for debug
 logging.getLogger('aiohttp.client').setLevel(logging.DEBUG)
 
 
@@ -22,14 +21,11 @@ logging.getLogger('aiohttp.client').setLevel(logging.DEBUG)
 load_dotenv()
 
 # --- Connection Details ---
-# The WebSocket URL for Pocket Option's Socket.IO server
 WEBSOCKET_URL = "wss://api-in.pocketoption.com:8095/socket.io/?EIO=3&transport=websocket"
-# Headers for the WebSocket connection
 DEFAULT_HEADERS = {
     "Origin": "https://pocketoption.com",
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36",
 }
-# Pocket Option SSID from environment variables
 SSID_MESSAGE_RAW = os.environ.get('POCKET_OPTION_SSID')
 
 if not SSID_MESSAGE_RAW:
@@ -87,7 +83,7 @@ async def connect_to_pocket_option_aiohttp():
                 WEBSOCKET_URL,
                 ssl=ssl_context,
                 headers=DEFAULT_HEADERS, 
-                timeout=10, 
+                timeout=30, # Increased timeout for more verbose logging
                 autoping=True,
                 autoclose=True,
                 heartbeat=30,
