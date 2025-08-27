@@ -2,6 +2,7 @@ import asyncio
 import os
 import logging
 import socketio
+import json
 from dotenv import load_dotenv
 
 # Configure logging
@@ -19,9 +20,7 @@ if not SSID_MESSAGE:
     logging.critical("POCKET_OPTION_SSID environment variable not set. Exiting.")
     exit(1)
 
-# The Socket.IO URL is different and does not contain the EIO or transport parameters.
-# The `python-socketio` library handles this automatically.
-# Use the correct base URL for Pocket Option's Socket.IO server.
+# The Socket.IO URL
 SOCKETIO_URL = "wss://api-in.pocketoption.com:8095"
 
 # Create an async Socket.IO client instance
@@ -32,17 +31,22 @@ async def connect():
     """Event handler for successful connection."""
     logging.info("Connected to Pocket Option WebSocket server via Socket.IO.")
     logging.info("Sending authentication message...")
-    # The Socket.IO library handles the EIO and transport details,
-    # so you only need to send the final message.
-    # Note: Your original SSID format might be incorrect for the Socket.IO client.
-    # The payload likely needs to be a standard JSON string or object.
-    # You may need to adapt this part based on Pocket Option's API documentation.
-    # This example assumes the payload is a valid JSON string.
+    
     try:
-        await sio.send(SSID_MESSAGE)
+        # Parse the JSON string from your SSID_MESSAGE.
+        # It assumes the format is always '42' followed by the JSON string.
+        message_payload = json.loads(SSID_MESSAGE[2:])
+        
+        # The first element is the event name, the second is the data.
+        # Pocket Option likely expects the event name "auth" and the session data.
+        event_name = message_payload[0]
+        event_data = message_payload[1]
+        
+        # Send the authentication event and data.
+        await sio.emit(event_name, event_data)
         logging.info("Authentication message sent.")
-    except Exception as e:
-        logging.error(f"Failed to send authentication message: {e}")
+    except (json.JSONDecodeError, IndexError, Exception) as e:
+        logging.error(f"Error parsing or sending authentication message: {e}")
 
 @sio.event
 async def disconnect():
@@ -58,7 +62,8 @@ async def message(data):
 async def main():
     """Main function to connect and run the client."""
     try:
-        await sio.connect(SOCKETIO_URL)
+        # Use the `headers` parameter to add an Origin header.
+        await sio.connect(SOCKETIO_URL, headers={'Origin': 'https://pocketoption.com'})
         await sio.wait()
     except socketio.exceptions.ConnectionError as e:
         logging.critical(f"Connection failed: {e}")
@@ -67,4 +72,3 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-    
