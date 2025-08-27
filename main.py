@@ -73,7 +73,7 @@ async def connect_to_pocket_option():
             WEBSOCKET_URL,
             ssl=ssl_context,
             # Changed from 'extra_headers' to 'additional_headers' for websockets v11.0+
-            additional_headers=DEFAULT_HEADERS, 
+            extra_headers=DEFAULT_HEADERS, 
             ping_interval=30,
             ping_timeout=30,
             close_timeout=10,
