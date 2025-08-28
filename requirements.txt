@@ -1,3 +1,2 @@
 python-dotenv
-aiohttp
-python-socketio[asyncio_aiohttp]
+websockets
