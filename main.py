@@ -20,7 +20,9 @@ logging.getLogger('engineio').setLevel(logging.DEBUG)
 load_dotenv()
 
 # --- Connection Details ---
-WEBSOCKET_URL = "https://api-in.pocketoption.com:8095" # Base URL for Socket.IO
+# Use the standard HTTPS port (443), which is the default for wss://
+# This was identified by inspecting the Pocket Option website.
+WEBSOCKET_URL = "https://api-in.pocketoption.com" 
 SSID_MESSAGE_RAW = os.environ.get('POCKET_OPTION_SSID')
 
 if not SSID_MESSAGE_RAW:
