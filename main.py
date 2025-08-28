@@ -1,3 +1,45 @@
+import asyncio
+import json
+import os
+import logging
+from typing import Optional
+from dotenv import load_dotenv
+import websockets
+
+# --- Configure Logging ---
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logging.getLogger('websockets').setLevel(logging.DEBUG)
+
+# Load environment variables from .env file
+load_dotenv()
+
+# --- Connection Details ---
+# Load credentials and headers from environment variables
+WEBSOCKET_URL = os.environ.get('WEBSOCKET_URL')
+USER_AGENT = os.environ.get('USER_AGENT')
+ORIGIN = os.environ.get('ORIGIN')
+POSESSION_COOKIE = os.environ.get('POCKET_OPTION_SSID')
+
+# Ensure all credentials are set
+if not all([WEBSOCKET_URL, USER_AGENT, ORIGIN, POSESSION_COOKIE]):
+    logging.critical("Missing one or more required environment variables. Exiting.")
+    exit(1)
+
+def format_auth_message(ssid: str) -> str:
+    """Formats the authentication message for Pocket Option."""
+    auth_data = {
+        "session": ssid,
+        "isDemo": 1,
+        "uid": 0,
+        "platform": 1,
+        "isFastHistory": True,
+    }
+    auth_json = json.dumps(auth_data, separators=(',', ':'))
+    return f'42["auth",{auth_json}]'
+
 async def pocket_option_bot():
     """Main bot logic with enhanced error handling."""
     custom_headers = {
@@ -31,7 +73,7 @@ async def pocket_option_bot():
                 # and send trading commands based on your strategy.
                 
     except websockets.exceptions.InvalidURI as e:
-        logging.critical(f"Invalid WebSocket URI: {e}. Please check WEBSOCKET_URL.")
+        logging.critical(f"Invalid WebSocket URI: {e}. Please check WEBSOCKET_URL in your .env file.")
     except websockets.exceptions.InvalidHandshake as e:
         logging.error(f"Handshake failed: {e}. Check URL, headers, and credentials.")
     except websockets.exceptions.ConnectionClosed as e:
@@ -61,4 +103,4 @@ if __name__ == "__main__":
         asyncio.run(main())
     except KeyboardInterrupt:
         logging.info("Bot shut down manually.")
-            
+
