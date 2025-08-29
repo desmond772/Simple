@@ -5,13 +5,14 @@ import logging
 from typing import Optional
 from dotenv import load_dotenv
 import websockets
+import random
 
 # --- Configure Logging ---
 logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
-logging.getLogger('websockets').setLevel(logging.DEBUG)
+logging.getLogger('websockets').setLevel(logging.INFO) # Changed to INFO to reduce verbosity
 
 # Load environment variables from .env file
 load_dotenv()
@@ -19,12 +20,19 @@ load_dotenv()
 # --- Connection Details ---
 # Load credentials and headers from environment variables
 WEBSOCKET_URL = os.environ.get('WEBSOCKET_URL')
-USER_AGENT = os.environ.get('USER_AGENT')
 ORIGIN = os.environ.get('ORIGIN')
 POSESSION_COOKIE = os.environ.get('POCKET_OPTION_SSID')
 
+# Use environment variables correctly
+USER_AGENTS = ['Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.169 Safari/537.36', 
+'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:75.0) Gecko/20100101 Firefox/75.0', 
+'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.1 Safari/605.1.15', 
+'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.149 Safari/537.36', 
+'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:77.0) Gecko/20100101 Firefox/77.0']
+USER_AGENT = random.choice(USER_AGENTS)
+
 # Ensure all credentials are set
-if not all([WEBSOCKET_URL, USER_AGENT, ORIGIN, POSESSION_COOKIE]):
+if not all([WEBSOCKET_URL, ORIGIN, POSESSION_COOKIE]):
     logging.critical("Missing one or more required environment variables. Exiting.")
     exit(1)
 
@@ -103,4 +111,4 @@ if __name__ == "__main__":
         asyncio.run(main())
     except KeyboardInterrupt:
         logging.info("Bot shut down manually.")
-
+    
