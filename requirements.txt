@@ -1,2 +1,8 @@
+# Manages environment variables from a .env file
 python-dotenv
-websockets
+
+# The core Socket.IO client library, pinned to a compatible version
+python-socketio==4.6.0
+
+# The underlying Engine.IO transport library, pinned to a compatible version
+python-engineio==3.13.2
