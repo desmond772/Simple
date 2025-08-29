@@ -12,16 +12,14 @@ WEBSOCKET_URL = os.getenv("WEBSOCKET_URL")
 ORIGIN = os.getenv("ORIGIN")
 
 # Create a Socket.IO client instance with robust reconnection settings
-# Engine.IO specific options must be passed in a separate dictionary for v4.x.
+# Engine.IO specific options are passed directly for older versions.
 sio = socketio.AsyncClient(
     reconnection=True,
     reconnection_attempts=0,  # Infinite reconnection attempts
     reconnection_delay=1,  # Start with a 1-second delay
     reconnection_delay_max=5,  # Cap the delay at 5 seconds
     randomization_factor=0.5,  # Randomize the delay to prevent server flooding
-    engineio_options={
-        "ping_interval": 20, # Interval to send pings to keep the connection alive
-    },
+    ping_interval=20, # Interval to send pings to keep the connection alive
     logger=True,
     engineio_logger=True, # Enable Engine.IO logging for debugging
 )
