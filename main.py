@@ -35,9 +35,9 @@ async def message(data):
     print(f"Received message: {data}")
 
 @sio.event
-async def error(data):
-    """Event handler for errors."""
-    print(f"Received error: {data}")
+async def connect_error(data):
+    """Event handler for connection errors."""
+    print(f"Connection to server failed: {data}")
 
 async def main():
     """Main function to start and run the connection."""
@@ -48,7 +48,8 @@ async def main():
     }
 
     try:
-        await sio.connect(WEBSOCKET_URL, headers=headers)
+        # Use the base URL and explicitly define the default namespace
+        await sio.connect(WEBSOCKET_URL, headers=headers, namespaces=['/'])
         await sio.wait()
     except socketio.exceptions.ConnectionError as e:
         print(f"Failed to connect to Socket.IO server: {e}")
@@ -58,4 +59,4 @@ if __name__ == "__main__":
         print("Error: WEBSOCKET_URL or POCKET_OPTION_SSID not found. Check your .env file.")
     else:
         asyncio.run(main())
-        
+
