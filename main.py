@@ -11,7 +11,7 @@ POCKET_OPTION_SSID = os.getenv("POCKET_OPTION_SSID")
 WEBSOCKET_URL = os.getenv("WEBSOCKET_URL")
 ORIGIN = os.getenv("ORIGIN")
 
-# Create a Socket.IO client instance with robust reconnection settings
+# Create a Socket.IO client instance with robust reconnection settings.
 # Engine.IO specific options are passed directly for older versions.
 sio = socketio.AsyncClient(
     reconnection=True,
