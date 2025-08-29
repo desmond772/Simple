@@ -48,8 +48,7 @@ async def main():
     }
 
     try:
-        # Use the base URL and explicitly define the default namespace
-        await sio.connect(WEBSOCKET_URL, headers=headers, namespaces=['/'])
+        await sio.connect(WEBSOCKET_URL, headers=headers)
         await sio.wait()
     except socketio.exceptions.ConnectionError as e:
         print(f"Failed to connect to Socket.IO server: {e}")
@@ -59,4 +58,4 @@ if __name__ == "__main__":
         print("Error: WEBSOCKET_URL or POCKET_OPTION_SSID not found. Check your .env file.")
     else:
         asyncio.run(main())
-
+    
