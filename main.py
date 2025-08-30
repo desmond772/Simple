@@ -12,6 +12,7 @@ load_dotenv()
 
 # Get environment variables
 POCKET_OPTION_SSID = os.getenv("POCKET_OPTION_SSID")
+USER_ID = os.getenv("USER_ID")
 WEBSOCKET_URL = os.getenv("WEBSOCKET_URL")
 ORIGIN = os.getenv("ORIGIN")
 
@@ -23,9 +24,17 @@ sio = socketio.AsyncClient(logger=True, engineio_logger=True)
 async def connect():
     print("Socket.IO connection established.")
     print("Authenticating with Pocket Option...")
-    # The 'auth' event should be sent immediately after connecting
-    # The payload format is crucial, so we stick to the official Socket.IO spec
-    await sio.emit('auth', {"session": POCKET_OPTION_SSID, "isDemo": 0})
+    
+    # Construct the authentication payload as a Python dictionary
+    auth_payload = {
+        "session": POCKET_OPTION_SSID,
+        "isDemo": 1,
+        "uid": int(USER_ID),
+        "platform": 1
+    }
+    
+    # Emit the 'auth' event with the correct payload
+    await sio.emit('auth', auth_payload)
 
 # Event handler for a failed connection attempt
 @sio.event
@@ -55,15 +64,12 @@ async def catch_all(event, data):
         print(f"Received unknown event '{event}' with data: {data}")
 
 async def main():
-    if not WEBSOCKET_URL or not POCKET_OPTION_SSID:
+    if not WEBSOCKET_URL or not POCKET_OPTION_SSID or not USER_ID:
         print("Error: Missing environment variables. Check your .env file.")
         return
 
     try:
-        # The socket.io client handles the Engine.IO handshake and upgrade process automatically
-        # It's best to strip the query parameters and let the library handle them
-        stripped_url = WEBSOCKET_URL.split('/socket.io')[0]
-        await sio.connect(url=stripped_url, transports=['websocket'])
+        await sio.connect(url=WEBSOCKET_URL, transports=['websocket'])
 
         # Wait forever to keep the connection alive and process events
         await sio.wait()
@@ -71,7 +77,8 @@ async def main():
     except Exception as e:
         logging.error(f"An error occurred: {e}")
     finally:
-        await sio.disconnect()
+        if sio.connected:
+            await sio.disconnect()
 
 if __name__ == "__main__":
     try:
