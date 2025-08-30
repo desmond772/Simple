@@ -23,22 +23,19 @@ async def receive_messages(websocket):
                 try:
                     # Strip the prefix and parse the JSON data.
                     event_data = json.loads(message[2:])
-                    event_name = event_data[0]
-                    payload = event_data[1]
+                    event_name = event_data[0] # The event name is the first element
+                    payload = event_data[1]    # The payload is the second element
 
                     # Route based on the event name.
-                    if event_name == 'auth':
+                    if event_name == 'auth_success':
                         # The 'auth' event from the server indicates a success or failure response.
-                        if payload.get('code') == 1:
-                            print(f"Authentication successful: {payload}")
-                            print("Requesting user balance...")
-                            
-                            # Send the 'profile/balance/get' request.
-                            balance_request = ['profile/balance/get', {}]
-                            await websocket.send(f'42{json.dumps(balance_request)}')
-                        else:
-                            print(f"Authentication failed: {payload}")
-
+                        print(f"Authentication successful: {payload}")
+                        print("Requesting user balance...")
+                        
+                        # Send the 'profile/balance/get' request.
+                        balance_request = ['profile/balance/get', {}]
+                        await websocket.send(f'42{json.dumps(balance_request)}')
+                    
                     elif event_name == 'profile/balance/get':
                         print(f"User balance received: {payload}")
                     
@@ -64,6 +61,7 @@ async def receive_messages(websocket):
             break
         except Exception as e:
             print(f"An error occurred while receiving a message: {e}")
+            break # Exit the loop on other errors
 
 async def main():
     """Manages the WebSocket connection lifecycle."""
@@ -73,28 +71,32 @@ async def main():
 
     # Pocket Option's WebSocket URL likely requires a `wss` prefix
     # and includes the Engine.IO path and query parameters for the session.
-    websocket_url = f"{WEBSOCKET_URL}/socket.io/?EIO=4&transport=websocket&sid={POCKET_OPTION_SSID}"
+    websocket_url = f"{WEBSOCKET_URL}/socket.io/?EIO=4&transport=websocket"
 
     # Headers to mimic a web browser connection.
+    # Note: Use 'additional_headers' for recent versions of 'websockets'.
     headers = {
         "Origin": ORIGIN,
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36"
+        "Cookie": f"ssid={POCKET_OPTION_SSID}",
     }
-    
+
+    user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36"
+
     print(f"Attempting to connect to raw WebSocket at {websocket_url}...")
     try:
-        # The `websockets` library handles the connection and handshake.
-        async with websockets.connect(websocket_url, extra_headers=headers) as websocket:
+        # Pass headers using 'additional_headers' and 'user_agent_header'.
+        async with websockets.connect(
+            websocket_url,
+            additional_headers=headers,
+            user_agent_header=user_agent
+        ) as websocket:
             print("WebSocket connection established.")
 
-            # Send the initial Engine.IO handshake message (usually '2').
             # The server will respond with the initial '0' and handshake data.
             # Then we can proceed with authentication.
-            
-            # After connection, wait for the initial server handshake.
             initial_message = await websocket.recv()
             print(f"Received initial handshake: {initial_message}")
-
+            
             # Send the 'auth' message in the Socket.IO format ('42').
             auth_payload = {
                 "session": POCKET_OPTION_SSID,
@@ -115,4 +117,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-
+                        
