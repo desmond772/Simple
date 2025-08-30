@@ -4,9 +4,6 @@ import socketio
 import logging
 from dotenv import load_dotenv
 
-# Set up logging to provide detailed debug information
-logging.basicConfig(level=logging.DEBUG)
-
 # Load environment variables
 load_dotenv()
 
@@ -16,6 +13,10 @@ USER_ID = os.getenv("USER_ID")
 WEBSOCKET_URL = os.getenv("WEBSOCKET_URL")
 ORIGIN = os.getenv("ORIGIN")
 
+if not all([POCKET_OPTION_SSID, USER_ID, WEBSOCKET_URL, ORIGIN]):
+    print("Error: Missing environment variables. Check your .env file.")
+    exit(1)
+
 # Create an async Socket.IO client instance with detailed logging
 sio = socketio.AsyncClient(logger=True, engineio_logger=True)
 
@@ -24,16 +25,12 @@ sio = socketio.AsyncClient(logger=True, engineio_logger=True)
 async def connect():
     print("Socket.IO connection established.")
     print("Authenticating with Pocket Option...")
-    
-    # Construct the authentication payload as a Python dictionary
     auth_payload = {
         "session": POCKET_OPTION_SSID,
         "isDemo": 1,
         "uid": int(USER_ID),
         "platform": 1
     }
-    
-    # Emit the 'auth' event with the correct payload
     await sio.emit('auth', auth_payload)
 
 # Event handler for a failed connection attempt
@@ -64,16 +61,9 @@ async def catch_all(event, data):
         print(f"Received unknown event '{event}' with data: {data}")
 
 async def main():
-    if not WEBSOCKET_URL or not POCKET_OPTION_SSID or not USER_ID:
-        print("Error: Missing environment variables. Check your .env file.")
-        return
-
     try:
         await sio.connect(url=WEBSOCKET_URL, transports=['websocket'])
-
-        # Wait forever to keep the connection alive and process events
         await sio.wait()
-
     except Exception as e:
         logging.error(f"An error occurred: {e}")
     finally:
