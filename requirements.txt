@@ -1,3 +1,2 @@
 python-dotenv
-python-socketio
-python-engineio
+websockets
