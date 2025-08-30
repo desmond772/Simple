@@ -2,3 +2,4 @@ python-dotenv
 websockets
 aiohttp
 socket.io
+python-socketio[asyncio]
