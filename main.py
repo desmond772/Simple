@@ -1,6 +1,7 @@
 import os
-import socketio
 import asyncio
+import json
+import websockets
 from dotenv import load_dotenv
 
 # Load environment variables from the .env file
@@ -11,51 +12,50 @@ POCKET_OPTION_SSID = os.getenv("POCKET_OPTION_SSID")
 WEBSOCKET_URL = os.getenv("WEBSOCKET_URL")
 ORIGIN = os.getenv("ORIGIN")
 
-# Create a Socket.IO client instance
-sio = socketio.AsyncClient()
+async def receive_messages(websocket):
+    """Continuously listen for and print messages from the server."""
+    try:
+        async for message in websocket:
+            print(f"Received message: {message}")
+    except websockets.exceptions.ConnectionClosed:
+        print("Connection closed.")
 
-@sio.event
-async def connect():
-    """Event handler for successful connection."""
-    print("Socket.IO connection established.")
-    
-    # Send the authentication payload
+async def send_authentication(websocket):
+    """Send the authentication message to the server."""
     auth_payload = {"session": POCKET_OPTION_SSID}
-    await sio.emit('auth', auth_payload)
+    await websocket.send(json.dumps(auth_payload))
     print("Authentication message sent.")
 
-@sio.event
-async def disconnect():
-    """Event handler for disconnection."""
-    print("Disconnected from the Socket.IO server.")
-
-@sio.event
-async def message(data):
-    """Event handler for incoming messages."""
-    print(f"Received message: {data}")
-
-@sio.event
-async def error(data):
-    """Event handler for errors."""
-    print(f"Received error: {data}")
-
 async def main():
-    """Main function to start and run the connection."""
+    """Main function to start and manage the connection."""
+    if not WEBSOCKET_URL or not POCKET_OPTION_SSID:
+        print("Error: WEBSOCKET_URL or POCKET_OPTION_SSID not found. Check your .env file.")
+        return
+
     headers = {
         "Origin": ORIGIN,
         "Cookie": f"ssid={POCKET_OPTION_SSID}",
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36"
     }
+    
+    # Define a timeout to prevent the connection attempt from hanging indefinitely
+    connection_timeout = 10 
 
     try:
-        await sio.connect(WEBSOCKET_URL, headers=headers)
-        await sio.wait()
-    except socketio.exceptions.ConnectionError as e:
-        print(f"Failed to connect to Socket.IO server: {e}")
+        # Establish the WebSocket connection
+        async with websockets.connect(WEBSOCKET_URL, extra_headers=headers, open_timeout=connection_timeout) as websocket:
+            print("WebSocket connection established.")
+            
+            # Create tasks for sending authentication and receiving messages
+            auth_task = asyncio.create_task(send_authentication(websocket))
+            receive_task = asyncio.create_task(receive_messages(websocket))
+            
+            # Wait for all tasks to complete (in this case, for the receive task to end)
+            await asyncio.gather(auth_task, receive_task)
+
+    except (websockets.exceptions.WebSocketException, asyncio.TimeoutError) as e:
+        print(f"Failed to connect to WebSocket server: {e}")
 
 if __name__ == "__main__":
-    if not WEBSOCKET_URL or not POCKET_OPTION_SSID:
-        print("Error: WEBSOCKET_URL or POCKET_OPTION_SSID not found. Check your .env file.")
-    else:
-        asyncio.run(main())
-        
+    asyncio.run(main())
+
