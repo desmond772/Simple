@@ -18,14 +18,19 @@ async def receive_messages(websocket):
     try:
         async for message in websocket:
             print(f"Received message: {message}")
-    except websockets.exceptions.ConnectionClosed:
-        print("Connection closed.")
+    except websockets.exceptions.ConnectionClosed as e:
+        print(f"Connection closed: {e}")
+    except Exception as e:
+        print(f"An error occurred while receiving messages: {e}")
 
 async def send_authentication(websocket):
     """Send the authentication message to the server."""
-    auth_payload = {"session": POCKET_OPTION_SSID, "user_id": USER_ID}
-    await websocket.send(json.dumps(auth_payload))
-    print("Authentication message sent.")
+    try:
+        auth_payload = {"session": POCKET_OPTION_SSID, "user_id": USER_ID}
+        await websocket.send(json.dumps(auth_payload))
+        print("Authentication message sent.")
+    except Exception as e:
+        print(f"An error occurred while sending authentication: {e}")
 
 async def main():
     """Main function to start and manage the connection."""
@@ -33,7 +38,6 @@ async def main():
         print("Error: WEBSOCKET_URL, POCKET_OPTION_SSID, or USER_ID not found. Check your .env file.")
         return
 
-    # Use a more complete set of headers to mimic a browser
     headers = {
         "Origin": ORIGIN,
         "Cookie": f"ssid={POCKET_OPTION_SSID}",
@@ -56,11 +60,15 @@ async def main():
             auth_task = asyncio.create_task(send_authentication(websocket))
             receive_task = asyncio.create_task(receive_messages(websocket))
             await asyncio.gather(auth_task, receive_task)
-    except websockets.exceptions.InvalidStatusCode as e:
+    except websockets.exceptions.InvalidStatus as e:
         print(f"Connection failed with status code: {e.status_code}. The server rejected the connection.")
         print(f"Possible causes: Invalid/expired SSID, or missing/incorrect headers.")
-    except (websockets.exceptions.WebSocketException, asyncio.TimeoutError) as e:
-        print(f"Failed to connect to WebSocket server: {e}")
+    except websockets.exceptions.ConnectionClosed as e:
+        print(f"Connection closed: {e}")
+    except asyncio.TimeoutError:
+        print("Connection timed out.")
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
 if __name__ == "__main__":
     asyncio.run(main())
