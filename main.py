@@ -43,7 +43,7 @@ async def main():
 
     try:
         # Establish the WebSocket connection
-        async with websockets.connect(WEBSOCKET_URL, extra_headers=headers, open_timeout=connection_timeout) as websocket:
+        async with websockets.connect(WEBSOCKET_URL, additional_headers=headers, open_timeout=connection_timeout) as websocket:
             print("WebSocket connection established.")
             
             # Create tasks for sending authentication and receiving messages
