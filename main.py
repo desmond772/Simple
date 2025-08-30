@@ -4,7 +4,7 @@ import json
 import websockets
 from dotenv import load_dotenv
 
-# Load environment variables from the .env file
+# Load environment variables
 load_dotenv()
 
 # Get environment variables
@@ -13,29 +13,28 @@ WEBSOCKET_URL = os.getenv("WEBSOCKET_URL")
 ORIGIN = os.getenv("ORIGIN")
 USER_ID = os.getenv("USER_ID")
 
+# Define functions for handling messages and authentication
 async def receive_messages(websocket):
-    """Continuously listen for and print messages from the server."""
     try:
         async for message in websocket:
             print(f"Received message: {message}")
     except websockets.exceptions.ConnectionClosed as e:
         print(f"Connection closed: {e}")
     except Exception as e:
-        print(f"An error occurred while receiving messages: {e}")
+        print(f"Error receiving messages: {e}")
 
 async def send_authentication(websocket):
-    """Send the authentication message to the server."""
     try:
         auth_payload = {"session": POCKET_OPTION_SSID, "user_id": USER_ID}
         await websocket.send(json.dumps(auth_payload))
         print("Authentication message sent.")
     except Exception as e:
-        print(f"An error occurred while sending authentication: {e}")
+        print(f"Error sending authentication: {e}")
 
+# Main function
 async def main():
-    """Main function to start and manage the connection."""
     if not WEBSOCKET_URL or not POCKET_OPTION_SSID or not USER_ID:
-        print("Error: WEBSOCKET_URL, POCKET_OPTION_SSID, or USER_ID not found. Check your .env file.")
+        print("Error: Missing environment variables. Check your .env file.")
         return
 
     headers = {
@@ -61,7 +60,7 @@ async def main():
             receive_task = asyncio.create_task(receive_messages(websocket))
             await asyncio.gather(auth_task, receive_task)
     except websockets.exceptions.InvalidStatus as e:
-        print(f"Connection failed with status code: {e.status_code}. The server rejected the connection.")
+        print(f"Connection failed with status code: {e.response.status_code}.")
         print(f"Possible causes: Invalid/expired SSID, or missing/incorrect headers.")
     except websockets.exceptions.ConnectionClosed as e:
         print(f"Connection closed: {e}")
