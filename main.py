@@ -30,7 +30,7 @@ sio = socketio.AsyncClient(
 async def connect():
     """Fired when the connection is successfully established or re-established."""
     print("Socket.IO connection established.")
-    
+
     auth_payload = {
         "session": POCKET_OPTION_SSID,
         "isDemo": 1,
@@ -43,7 +43,7 @@ async def connect():
 async def auth_success(data):
     """Fired upon successful authentication, as confirmed by Pocket Option."""
     print(f"Authentication successful: {data}")
-    
+
     print("Requesting user balance...")
     await sio.emit('profile/balance/get', {})
 
@@ -90,3 +90,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
