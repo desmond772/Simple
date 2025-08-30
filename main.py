@@ -17,6 +17,13 @@ async def receive_messages(websocket):
     try:
         async for message in websocket:
             print(f"Received message: {message}")
+            if message.startswith('42["profile",'):
+                profile_info = json.loads(message[3:])[1]
+                balance = profile_info.get("balance")
+                print(f"Balance: {balance}")
+            elif message == "2":
+                print("Received ping, sending pong")
+                await websocket.send("3")  # Send pong response
     except websockets.exceptions.ConnectionClosed as e:
         print(f"Connection closed: {e}")
     except Exception as e:
@@ -29,6 +36,14 @@ async def send_authentication(websocket):
         print("Authentication message sent.")
     except Exception as e:
         print(f"Error sending authentication: {e}")
+
+async def get_balance(websocket):
+    try:
+        balance_payload = '42["profile"]'
+        await websocket.send(balance_payload)
+        print("Balance request sent.")
+    except Exception as e:
+        print(f"Error sending balance request: {e}")
 
 # Main function
 async def main():
@@ -49,8 +64,11 @@ async def main():
         ) as websocket:
             print("WebSocket connection established.")
             auth_task = asyncio.create_task(send_authentication(websocket))
+            await auth_task
+            await asyncio.sleep(1)  # Wait for authentication to complete
+            balance_task = asyncio.create_task(get_balance(websocket))
             receive_task = asyncio.create_task(receive_messages(websocket))
-            await asyncio.gather(auth_task, receive_task)
+            await asyncio.gather(balance_task, receive_task)
     except websockets.exceptions.InvalidStatus as e:
         print(f"Connection failed with status code: {e.response.status_code}.")
         print(f"Possible causes: Invalid/expired SSID, or missing/incorrect headers.")
