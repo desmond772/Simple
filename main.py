@@ -9,16 +9,21 @@ load_dotenv()
 
 # Get environment variables
 POCKET_OPTION_SSID = os.getenv("POCKET_OPTION_SSID")
-WEBSOCKET_URL = os.getenv("WEBSOCKET_URL")
+WEBSOCKET_URL = os.getenv("WEBS
 ORIGIN = os.getenv("ORIGIN")
 
-# Define functions for handling messages and authentication
+                                                           
+async def receive_messages(websocket):
+    try:
+        async for message in websocket:
+            if message == "# Define functions for handling messages and authentication
 async def receive_messages(websocket):
     try:
         async for message in websocket:
             if message == "2":
                 print("Received ping, sending pong")
-                await websocket.send("3")  # Send pong response
+                await websocket.send("3")                      
+            elif message.startswith('42["# Send pong response
             elif message.startswith('42["profile",'):
                 profile_info = json.loads(message[3:])[1]
                 balance = profile_info.get("balance")
@@ -42,6 +47,8 @@ async def receive_messages(websocket):
 
 async def send_authentication(websocket):
     try:
+        auth_payload = f'42["def send_authentication(websocket):
+    try:
         auth_payload = f'42["auth",{{"session":"{POCKET_OPTION_SSID}","isDemo":0}}]'
         await websocket.send(auth_payload)
         print("Authentication message sent.")
@@ -49,6 +56,8 @@ async def send_authentication(websocket):
         print(f"Error sending authentication: {e}")
 
 async def get_balance(websocket):
+    try:
+        balance_payload = '42["def get_balance(websocket):
     try:
         balance_payload = '42["profile"]'
         await websocket.send(balance_payload)
@@ -58,6 +67,8 @@ async def get_balance(websocket):
 
 async def get_history(websocket):
     try:
+        history_payload = '42["def get_history(websocket):
+    try:
         history_payload = '42["history"]'
         await websocket.send(history_payload)
         print("History request sent.")
@@ -65,6 +76,8 @@ async def get_history(websocket):
         print(f"Error sending history request: {e}")
 
 async def get_instruments(websocket):
+    try:
+        instruments_payload = '42["def get_instruments(websocket):
     try:
         instruments_payload = '42["instruments"]'
         await websocket.send(instruments_payload)
@@ -75,13 +88,21 @@ async def get_instruments(websocket):
 async def keep_alive(websocket):
     try:
         while True:
+            await asyncio.sleep(20)                              
+            await websocket.send("def keep_alive(websocket):
+    try:
+        while True:
             await asyncio.sleep(20)  # Send ping every 20 seconds
-            await websocket.send("2")  # Send ping
+            await websocket.send("2")             
+            print("# Send ping
             print("Sent ping")
     except Exception as e:
         print(f"Error sending ping: {e}")
 
-# Main function
+               
+async def main():
+    if not WEBSOCKET_URL or not POCKET_OPTION_SSID:
+        print("# Main function
 async def main():
     if not WEBSOCKET_URL or not POCKET_OPTION_SSID:
         print("Error: Missing environment variables. Check your .env file.")
@@ -96,7 +117,7 @@ async def main():
         async with websockets.connect(
             WEBSOCKET_URL,
             additional_headers=headers,
-            open_timeout=0,
+            open_timeout=connection_timeout,
         ) as websocket:
             print("WebSocket connection established.")
             await send_authentication(websocket)
