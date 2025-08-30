@@ -30,7 +30,7 @@ async def main():
     connection_timeout = 10
     try:
         async with websockets.connect(WEBSOCKET_URL, 
-                                      ssl_verify=False, 
+                                      ssl=False, 
                                       additional_headers=headers, 
                                       open_timeout=connection_timeout) as websocket:
             print("WebSocket connection established.")
