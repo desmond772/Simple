@@ -11,6 +11,7 @@ load_dotenv()
 POCKET_OPTION_SSID = os.getenv("POCKET_OPTION_SSID")
 WEBSOCKET_URL = os.getenv("WEBSOCKET_URL")
 ORIGIN = os.getenv("ORIGIN")
+USER_ID = os.getenv("USER_ID")
 
 async def receive_messages(websocket):
     """Continuously listen for and print messages from the server."""
@@ -22,14 +23,14 @@ async def receive_messages(websocket):
 
 async def send_authentication(websocket):
     """Send the authentication message to the server."""
-    auth_payload = {"session": POCKET_OPTION_SSID}
+    auth_payload = {"session": POCKET_OPTION_SSID, "user_id": USER_ID}
     await websocket.send(json.dumps(auth_payload))
     print("Authentication message sent.")
 
 async def main():
     """Main function to start and manage the connection."""
-    if not WEBSOCKET_URL or not POCKET_OPTION_SSID:
-        print("Error: WEBSOCKET_URL or POCKET_OPTION_SSID not found. Check your .env file.")
+    if not WEBSOCKET_URL or not POCKET_OPTION_SSID or not USER_ID:
+        print("Error: WEBSOCKET_URL, POCKET_OPTION_SSID, or USER_ID not found. Check your .env file.")
         return
 
     # Use a more complete set of headers to mimic a browser
@@ -44,30 +45,17 @@ async def main():
         "Connection": "Upgrade",
         "Upgrade": "websocket",
         "Sec-WebSocket-Version": "13",
-        # Important: You must inspect browser traffic for additional required headers,
-        # such as Sec-WebSocket-Key and adjust as needed.
-        # It is unique per connection so not hardcoded here.
     }
-    
-    # Define a timeout to prevent the connection attempt from hanging indefinitely
-    connection_timeout = 10 
 
+    connection_timeout = 10
     try:
-        # Establish the WebSocket connection, using additional_headers
         async with websockets.connect(
-            WEBSOCKET_URL,
-            additional_headers=headers,
-            open_timeout=connection_timeout
+            WEBSOCKET_URL, additional_headers=headers, open_timeout=connection_timeout
         ) as websocket:
             print("WebSocket connection established.")
-            
-            # Create tasks for sending authentication and receiving messages
             auth_task = asyncio.create_task(send_authentication(websocket))
             receive_task = asyncio.create_task(receive_messages(websocket))
-            
-            # Wait for all tasks to complete (or for the script to be manually stopped)
             await asyncio.gather(auth_task, receive_task)
-
     except websockets.exceptions.InvalidStatusCode as e:
         print(f"Connection failed with status code: {e.status_code}. The server rejected the connection.")
         print(f"Possible causes: Invalid/expired SSID, or missing/incorrect headers.")
@@ -76,4 +64,3 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-    
