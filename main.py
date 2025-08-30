@@ -1,7 +1,6 @@
 import os
 import asyncio
-import json
-import websockets
+import socketio
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -12,88 +11,59 @@ POCKET_OPTION_SSID = os.getenv("POCKET_OPTION_SSID")
 WEBSOCKET_URL = os.getenv("WEBSOCKET_URL")
 ORIGIN = os.getenv("ORIGIN")
 
-MAX_RECONNECT_ATTEMPTS = 5
-reconnect_attempts = 0
+# Create an async Socket.IO client instance
+sio = socketio.AsyncClient()
 
-async def receive_messages(websocket):
-    try:
-        async for message in websocket:
-            if message.startswith('0'):
-                print("Received handshake response. Sending authentication...")
-                auth_payload = f'42["auth",{{"session":"{POCKET_OPTION_SSID}","isDemo":0}}]'
-                await websocket.send(auth_payload)
-            elif message.startswith('40'):
-                print("Received authentication response. Sending profile request...")
-                balance_payload = '42["profile"]'
-                await websocket.send(balance_payload)
-            elif message.startswith('42["profile"'):
-                profile_info = json.loads(message[3:])[1]
-                balance = profile_info.get("balance")
-                demo_balance = profile_info.get("demoBalance")
-                currency = profile_info.get("currency")
-                print(f"Balance: {balance}")
-                print(f"Demo Balance: {demo_balance}")
-                print(f"Currency: {currency}")
-            elif message == "2":
-                print("Received ping, sending pong")
-                await websocket.send("3")
-            else:
-                print(f"Received message: {message}")
-    except websockets.exceptions.ConnectionClosed:
-        print("Connection closed. Reconnecting...")
-        await reconnect()
+@sio.event
+async def connect():
+    print("Socket.IO connection established.")
+    print("Authenticating with Pocket Option...")
+    await sio.emit('auth', {"session": POCKET_OPTION_SSID, "isDemo": 0})
 
-async def keep_alive(websocket):
-    while True:
-        try:
-            await websocket.send("2")
-            print("Ping sent successfully.")
-            await asyncio.sleep(10)
-        except websockets.exceptions.ConnectionClosed:
-            print("Connection closed. Reconnecting...")
-            await reconnect()
-        except Exception as e:
-            print(f"Error sending ping: {e}")
+@sio.event
+async def disconnect():
+    print("Socket.IO disconnected.")
 
-async def reconnect():
-    global reconnect_attempts
-    if reconnect_attempts < MAX_RECONNECT_ATTEMPTS:
-        reconnect_attempts += 1
-        print(f"Reconnect attempt {reconnect_attempts}...")
-        await asyncio.sleep(5)
-        await main()
-    else:
-        print("Maximum reconnect attempts exceeded. Exiting...")
+@sio.event
+async def profile(data):
+    print("Received profile info:")
+    balance = data.get("balance")
+    demo_balance = data.get("demoBalance")
+    currency = data.get("currency")
+    print(f"Balance: {balance}")
+    print(f"Demo Balance: {demo_balance}")
+    print(f"Currency: {currency}")
+
+@sio.on('*')
+async def catch_all(event, data):
+    """
+    Catch-all for any other events from the server, useful for debugging.
+    """
+    print(f"Received event '{event}' with data: {data}")
 
 async def main():
     if not WEBSOCKET_URL or not POCKET_OPTION_SSID:
         print("Error: Missing environment variables. Check your .env file.")
         return
 
-    headers = {
-        "Origin": ORIGIN,
-    }
-
     try:
-        async with websockets.connect(
-            WEBSOCKET_URL,
-            additional_headers=headers,
-            open_timeout=10,
-            ping_interval=None,
-        ) as websocket:
-            print("WebSocket connection established successfully.")
-            tasks = [
-                asyncio.create_task(receive_messages(websocket)),
-                asyncio.create_task(keep_alive(websocket)),
-            ]
-            await asyncio.gather(*tasks)
-    except Exception as e:
-        print(f"An error occurred: {e}")
+        # Note: socket.io client uses a different connection URL format
+        # It handles the EIO and transport parameters automatically
+        stripped_url = WEBSOCKET_URL.split('/socket.io')[0]
+        await sio.connect(url=stripped_url, transports=['websocket'])
 
-if __name__ == "__main__":
-    try:
-        asyncio.run(main())
+        # Wait forever to keep the connection alive and process events
+        await sio.wait()
+
+    except socketio.exceptions.ConnectionError as e:
+        print(f"Connection failed: {e}")
     except KeyboardInterrupt:
         print("\nScript interrupted by user. Exiting...")
     except Exception as e:
         print(f"An error occurred: {e}")
+    finally:
+        await sio.disconnect()
+
+if __name__ == "__main__":
+    asyncio.run(main())
+    
