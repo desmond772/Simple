@@ -12,18 +12,19 @@ WEBSOCKET_URL = os.getenv("WEBSOCKET_URL")
 ORIGIN = os.getenv("ORIGIN")
 
 # Create a Socket.IO client instance with robust reconnection settings
-# Engine.IO specific options are passed directly for older versions.
+# For python-socketio version 5+, pass Engine.IO options inside the 'engineio_options' dictionary.
 sio = socketio.AsyncClient(
     reconnection=True,
     reconnection_attempts=0,  # Infinite reconnection attempts
     reconnection_delay=1,  # Start with a 1-second delay
     reconnection_delay_max=5,  # Cap the delay at 5 seconds
     randomization_factor=0.5,  # Randomize the delay to prevent server flooding
-    ping_interval=20, # Interval to send pings to keep the connection alive
     logger=True,
     engineio_logger=True, # Enable Engine.IO logging for debugging
-    # For version 4.6.0, pass transports and ping_interval directly
-    transports=['websocket'] 
+    engineio_options={
+        'ping_interval': 20, # Interval to send pings to keep the connection alive
+        'transports': ['websocket'] # Specify websocket transport
+    }
 )
 
 @sio.event
@@ -91,4 +92,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-
+    
