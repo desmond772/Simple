@@ -13,23 +13,31 @@ WEBSOCKET_URL = os.getenv("WEBSOCKET_URL")
 ORIGIN = os.getenv("ORIGIN")
 
 async def receive_messages(websocket):
-    async for message in websocket:
-        if message == "2":
-            print("Received ping, sending pong")
-            await websocket.send("3")
-            print("Connection is alive...")
-        elif message.startswith('42["profile",'):
-            profile_info = json.loads(message[3:])[1]
-            balance = profile_info.get("balance")
-            demo_balance = profile_info.get("demoBalance")
-            currency = profile_info.get("currency")
-            print(f"Balance: {balance}")
-            print(f"Demo Balance: {demo_balance}")
-            print(f"Currency: {currency}")
-            print("Connection is alive...")
-        else:
-            print(f"Received message: {message}")
-            print("Connection is alive...")
+    try:
+        async for message in websocket:
+            if message == "2":
+                print("Received ping, sending pong")
+                await websocket.send("3")
+                print("Connection is alive...")
+            elif message.startswith('42["profile",'):
+                profile_info = json.loads(message[3:])[1]
+                balance = profile_info.get("balance")
+                demo_balance = profile_info.get("demoBalance")
+                currency = profile_info.get("currency")
+                print(f"Balance: {balance}")
+                print(f"Demo Balance: {demo_balance}")
+                print(f"Currency: {currency}")
+                print("Connection is alive...")
+            elif message.startswith('451-["successauth"'):
+                print("Handshake successful. Authenticated.")
+            elif message.startswith('451-["failedauth"'):
+                print("Handshake failed. Authentication failed.")
+            else:
+                print(f"Received message: {message}")
+                print("Connection is alive...")
+    except websockets.exceptions.ConnectionClosed:
+        print("Connection closed. Reconnecting...")
+        await reconnect()
 
 async def send_authentication(websocket):
     try:
@@ -56,8 +64,15 @@ async def keep_alive(websocket):
             print("Ping sent successfully.")
             print("Connection is alive...")
             await asyncio.sleep(10)
+        except websockets.exceptions.ConnectionClosed:
+            print("Connection closed. Reconnecting...")
+            await reconnect()
         except Exception as e:
             print(f"Error sending ping: {e}")
+
+async def reconnect():
+    await asyncio.sleep(5)
+    await main()
 
 async def main():
     if not WEBSOCKET_URL or not POCKET_OPTION_SSID:
