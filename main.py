@@ -12,16 +12,19 @@ WEBSOCKET_URL = os.getenv("WEBSOCKET_URL")
 ORIGIN = os.getenv("ORIGIN")
 
 # Create a Socket.IO client instance with robust reconnection settings
-# Engine.IO specific options are passed directly for older versions.
+# Engine.IO specific options are passed via the 'engineio_options' dictionary.
 sio = socketio.AsyncClient(
     reconnection=True,
     reconnection_attempts=0,  # Infinite reconnection attempts
     reconnection_delay=1,  # Start with a 1-second delay
     reconnection_delay_max=5,  # Cap the delay at 5 seconds
-    randomization_factor=0.5,  # Randomize the delay to prevent server flooding
-    ping_interval=20, # Interval to send pings to keep the connection alive
+    randomization_factor=0.5,  # Randomize the delay
     logger=True,
     engineio_logger=True, # Enable Engine.IO logging for debugging
+    engineio_options={
+        'ping_interval': 20, # Interval to send pings
+        'transports': ['websocket'] # Specify websocket transport
+    }
 )
 
 @sio.event
@@ -80,7 +83,7 @@ async def main():
 
     print(f"Attempting to connect to {WEBSOCKET_URL}...")
     try:
-        await sio.connect(WEBSOCKET_URL, headers=headers, transports=['websocket'])
+        await sio.connect(WEBSOCKET_URL, headers=headers)
         await sio.wait()
     except socketio.exceptions.ConnectionError as e:
         print(f"Failed to establish initial connection to Socket.IO server: {e}")
@@ -89,4 +92,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-
+    
