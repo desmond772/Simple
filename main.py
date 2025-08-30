@@ -16,14 +16,25 @@ ORIGIN = os.getenv("ORIGIN")
 async def receive_messages(websocket):
     try:
         async for message in websocket:
-            print(f"Received message: {message}")
-            if message.startswith('42["profile",'):
-                profile_info = json.loads(message[3:])[1]
-                balance = profile_info.get("balance")
-                print(f"Balance: {balance}")
-            elif message == "2":
+            if message == "2":
                 print("Received ping, sending pong")
                 await websocket.send("3")  # Send pong response
+            elif message.startswith('42["profile",'):
+                profile_info = json.loads(message[3:])[1]
+                balance = profile_info.get("balance")
+                demo_balance = profile_info.get("demoBalance")
+                currency = profile_info.get("currency")
+                print(f"Balance: {balance}")
+                print(f"Demo Balance: {demo_balance}")
+                print(f"Currency: {currency}")
+            elif message.startswith('42["history",'):
+                history_info = json.loads(message[3:])[1]
+                print(f"History: {history_info}")
+            elif message.startswith('42["instruments",'):
+                instruments_info = json.loads(message[3:])[1]
+                print(f"Instruments: {instruments_info}")
+            else:
+                print(f"Received message: {message}")
     except websockets.exceptions.ConnectionClosed as e:
         print(f"Connection closed: {e.code} {e.reason}")
     except Exception as e:
@@ -44,6 +55,22 @@ async def get_balance(websocket):
         print("Balance request sent.")
     except Exception as e:
         print(f"Error sending balance request: {e}")
+
+async def get_history(websocket):
+    try:
+        history_payload = '42["history"]'
+        await websocket.send(history_payload)
+        print("History request sent.")
+    except Exception as e:
+        print(f"Error sending history request: {e}")
+
+async def get_instruments(websocket):
+    try:
+        instruments_payload = '42["instruments"]'
+        await websocket.send(instruments_payload)
+        print("Instruments request sent.")
+    except Exception as e:
+        print(f"Error sending instruments request: {e}")
 
 async def keep_alive(websocket):
     try:
@@ -69,11 +96,13 @@ async def main():
         async with websockets.connect(
             WEBSOCKET_URL,
             additional_headers=headers,
-            open_timeout=connection_timeout,
+            open_timeout=0,
         ) as websocket:
             print("WebSocket connection established.")
             await send_authentication(websocket)
             await get_balance(websocket)
+            await get_history(websocket)
+            await get_instruments(websocket)
             tasks = [
                 asyncio.create_task(receive_messages(websocket)),
                 asyncio.create_task(keep_alive(websocket)),
@@ -82,10 +111,6 @@ async def main():
     except websockets.exceptions.InvalidStatus as e:
         print(f"Connection failed with status code: {e.response.status_code}.")
         print(f"Possible causes: Invalid/expired SSID, or missing/incorrect headers.")
-    except websockets.exceptions.ConnectionClosed as e:
-        print(f"Connection closed: {e.code} {e.reason}")
-    except asyncio.TimeoutError:
-        print("Connection timed out.")
     except Exception as e:
         print(f"An error occurred: {e}")
 
