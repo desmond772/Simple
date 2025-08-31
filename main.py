@@ -24,24 +24,22 @@ sio = socketio.AsyncClient(logger=True, engineio_logger=True)
 @sio.event
 async def connect():
     print("Socket.IO connection established.")
-    print("Authenticating with Pocket Option...")
-    auth_payload = {
-        "session": POCKET_OPTION_SSID,
-        "isDemo": 1,
-        "uid": int(USER_ID),
-        "platform": 1
-    }
-    await sio.emit('auth', auth_payload)
+    # Note: Authentication is now handled within the sio.connect() call.
+    # The server should respond to the authentication and then send events.
 
-# Event handler for a failed connection attempt
+# Event handler for connection errors
 @sio.event
 async def connect_error(data):
-    print("The connection failed!")
+    print(f"The connection failed! Data: {data}")
 
-# Event handler for disconnection
+# Event handler for disconnection, now with reason
 @sio.event
-async def disconnect():
-    print("Socket.IO disconnected.")
+async def disconnect(reason):
+    print(f"Socket.IO disconnected. Reason: {reason}")
+    if "Unauthorized" in reason:
+        print("Authentication likely failed. Check your SSID and other credentials.")
+    elif "transport close" in reason:
+        print("Transport closed, possibly due to a connection error or authentication failure.")
 
 # Event handler for the 'profile' message, which should contain the balance
 @sio.on('profile')
@@ -57,12 +55,25 @@ async def on_profile(data):
 # Catch-all event handler to log any unknown messages from the server
 @sio.on('*')
 async def catch_all(event, data):
-    if event not in ['connect', 'disconnect', 'auth', 'profile']:
+    if event not in ['connect', 'disconnect', 'profile', 'auth', 'connect_error']:
         print(f"Received unknown event '{event}' with data: {data}")
 
 async def main():
+    headers = {'Origin': ORIGIN}
+    auth_payload = {
+        "session": POCKET_OPTION_SSID,
+        "isDemo": 1,  # Set to 0 for a real account
+        "uid": int(USER_ID),
+        "platform": 1
+    }
+    
     try:
-        await sio.connect(url=WEBSOCKET_URL, transports=['websocket'])
+        await sio.connect(
+            url=WEBSOCKET_URL,
+            transports=['websocket'],
+            headers=headers,
+            auth=auth_payload
+        )
         await sio.wait()
     except Exception as e:
         logging.error(f"An error occurred: {e}")
@@ -75,3 +86,4 @@ if __name__ == "__main__":
         asyncio.run(main())
     except KeyboardInterrupt:
         print("\nScript interrupted by user. Exiting...")
+    
